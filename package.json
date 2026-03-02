@@ -1,7 +1,7 @@
 {
-  "name": "install-on-air",
-  "version": "2.0.0",
-  "description": "OTA iOS app distribution service — upload IPA, generate QR, install over the air",
+  "name": "ipa-installer",
+  "version": "1.0.0",
+  "description": "Self-hosted OTA iOS app installer — upload IPA, generate QR, install over the air",
   "scripts": {
     "build": "nest build",
     "start": "node dist/main.js",

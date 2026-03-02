@@ -51,15 +51,13 @@ document.addEventListener('DOMContentLoaded', () => {
   // --- File handling ---
 
   function handleFile(file) {
-    // Validate extension
     if (!file.name.toLowerCase().endsWith('.ipa')) {
       showError('Please select a valid .ipa file.');
       return;
     }
 
-    // Validate size (500MB)
-    if (file.size > 500 * 1024 * 1024) {
-      showError('File is too large. Maximum size is 500MB.');
+    if (file.size > 1024 * 1024 * 1024) {
+      showError('File is too large. Maximum size is 1 GB.');
       return;
     }
 
@@ -67,7 +65,6 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function uploadFile(file) {
-    // Reset UI
     hideError();
     resultSection.classList.remove('active');
     uploadZone.style.display = 'none';
@@ -82,7 +79,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const xhr = new XMLHttpRequest();
 
-    // Progress tracking
     xhr.upload.addEventListener('progress', (e) => {
       if (e.lengthComputable) {
         const percent = Math.round((e.loaded / e.total) * 100);
@@ -110,9 +106,9 @@ document.addEventListener('DOMContentLoaded', () => {
       } else {
         try {
           const data = JSON.parse(xhr.responseText);
-          showUploadError(data.error || `Upload failed (${xhr.status})`);
+          showUploadError(data.error || 'Upload failed (' + xhr.status + ')');
         } catch (e) {
-          showUploadError(`Upload failed (${xhr.status})`);
+          showUploadError('Upload failed (' + xhr.status + ')');
         }
       }
     });
@@ -144,7 +140,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('resultLink').value = data.installUrl;
   }
 
-  // --- Show error ---
+  // --- Error helpers ---
 
   function showUploadError(message) {
     progressSection.classList.remove('active');
@@ -174,7 +170,6 @@ document.addEventListener('DOMContentLoaded', () => {
         copyBtn.classList.remove('copied');
       }, 2000);
     }).catch(() => {
-      // Fallback: select the input text
       document.getElementById('resultLink').select();
     });
   });

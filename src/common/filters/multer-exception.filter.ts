@@ -16,7 +16,7 @@ export class MulterExceptionFilter implements ExceptionFilter {
     if (exception.code === 'LIMIT_FILE_SIZE') {
       response.status(HttpStatus.PAYLOAD_TOO_LARGE).json({
         success: false,
-        error: 'File too large. Maximum size is 500MB.',
+        error: 'File too large. Maximum size is 1GB.',
       });
     } else {
       response.status(HttpStatus.BAD_REQUEST).json({
