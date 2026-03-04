@@ -2,7 +2,6 @@ import { Controller, Get, Inject, Param, Res, HttpStatus } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config';
 import { Response } from 'express';
 import * as path from 'path';
-import * as fs from 'fs';
 import { STORAGE_SERVICE, IStorageService } from '../common/interfaces/storage.interface';
 
 @Controller()
@@ -59,13 +58,17 @@ export class AppInfoController {
     const iconKey = `${id}/icon.png`;
     const defaultIcon = path.join(process.cwd(), 'public', 'images', 'default-icon.png');
 
-    res.set('Content-Type', 'image/png');
+    // Single S3/fs call — gets stream + size together, returns null if missing
+    const result = await this.storageService.getFileStream(iconKey);
 
-    const exists = await this.storageService.fileExists(iconKey);
-    if (exists) {
-      const stream = await this.storageService.readFileStream(iconKey);
-      stream.pipe(res);
+    if (result) {
+      res.set('Content-Type', 'image/png');
+      if (result.contentLength !== undefined) {
+        res.set('Content-Length', String(result.contentLength));
+      }
+      result.stream.pipe(res);
     } else {
+      res.set('Content-Type', 'image/png');
       res.sendFile(path.resolve(defaultIcon));
     }
   }
@@ -77,16 +80,22 @@ export class AppInfoController {
   ): Promise<void> {
     const ipaKey = `${id}/app.ipa`;
 
-    const exists = await this.storageService.fileExists(ipaKey);
-    if (!exists) {
+    // Single S3/fs call — gets stream + content-length in one request.
+    // This is critical for iOS OTA: without Content-Length the device shows
+    // "Waiting..." indefinitely because it can't determine download progress.
+    const result = await this.storageService.getFileStream(ipaKey);
+
+    if (!result) {
       res.status(HttpStatus.NOT_FOUND).send('File not found');
       return;
     }
 
     res.set('Content-Type', 'application/octet-stream');
     res.set('Content-Disposition', 'attachment; filename="app.ipa"');
+    if (result.contentLength !== undefined) {
+      res.set('Content-Length', String(result.contentLength));
+    }
 
-    const stream = await this.storageService.readFileStream(ipaKey);
-    stream.pipe(res);
+    result.stream.pipe(res);
   }
 }

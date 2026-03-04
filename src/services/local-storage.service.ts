@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import * as fs from 'fs';
 import * as path from 'path';
 import { Readable } from 'stream';
-import { IStorageService } from '../common/interfaces/storage.interface';
+import { IStorageService, IFileStreamResult } from '../common/interfaces/storage.interface';
 
 @Injectable()
 export class LocalStorageService implements IStorageService {
@@ -74,6 +74,20 @@ export class LocalStorageService implements IStorageService {
       return stat.mtime;
     } catch {
       return undefined;
+    }
+  }
+
+  async getFileStream(key: string): Promise<IFileStreamResult | null> {
+    const filePath = path.join(this.uploadDir, key);
+    try {
+      const stat = fs.statSync(filePath);
+      const stream = fs.createReadStream(filePath);
+      return {
+        stream,
+        contentLength: stat.size,
+      };
+    } catch {
+      return null;
     }
   }
 }

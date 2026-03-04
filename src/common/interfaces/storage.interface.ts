@@ -2,6 +2,12 @@ import { Readable } from 'stream';
 
 export const STORAGE_SERVICE = 'STORAGE_SERVICE';
 
+export interface IFileStreamResult {
+  stream: Readable;
+  contentLength?: number;
+  contentType?: string;
+}
+
 export interface IStorageService {
   /**
    * Save a file to storage.
@@ -43,4 +49,10 @@ export interface IStorageService {
    * Returns undefined if the file does not exist.
    */
   getLastModified(key: string): Promise<Date | undefined>;
+
+  /**
+   * Get a file as a stream along with its size and content type in a single call.
+   * Returns null if the file does not exist.
+   */
+  getFileStream(key: string): Promise<IFileStreamResult | null>;
 }

@@ -9,7 +9,7 @@ import {
   DeleteObjectsCommand,
   ListObjectsV2Command,
 } from '@aws-sdk/client-s3';
-import { IStorageService } from '../common/interfaces/storage.interface';
+import { IStorageService, IFileStreamResult } from '../common/interfaces/storage.interface';
 
 @Injectable()
 export class S3StorageService implements IStorageService, OnModuleInit {
@@ -179,6 +179,28 @@ export class S3StorageService implements IStorageService, OnModuleInit {
       return response.LastModified;
     } catch {
       return undefined;
+    }
+  }
+
+  async getFileStream(key: string): Promise<IFileStreamResult | null> {
+    try {
+      const response = await this.s3.send(
+        new GetObjectCommand({
+          Bucket: this.bucket,
+          Key: key,
+        }),
+      );
+
+      return {
+        stream: response.Body as Readable,
+        contentLength: response.ContentLength,
+        contentType: response.ContentType,
+      };
+    } catch (err: any) {
+      if (err.name === 'NoSuchKey' || err.$metadata?.httpStatusCode === 404) {
+        return null;
+      }
+      throw err;
     }
   }
 
