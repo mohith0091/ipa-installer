@@ -1,47 +1,48 @@
-import { Controller, Get, Param, Res, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Inject, Param, Res, HttpStatus } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Response } from 'express';
 import * as path from 'path';
 import * as fs from 'fs';
+import { STORAGE_SERVICE, IStorageService } from '../common/interfaces/storage.interface';
 
 @Controller()
 export class AppInfoController {
-  constructor(private readonly configService: ConfigService) {}
+  constructor(
+    private readonly configService: ConfigService,
+    @Inject(STORAGE_SERVICE)
+    private readonly storageService: IStorageService,
+  ) {}
 
-  /** Serve install.html for /app/:id routes */
   @Get('app/:id')
   serveInstallPage(@Res() res: Response): void {
-    const installHtml = path.join(
-      process.cwd(),
-      'public',
-      'install.html',
-    );
+    const installHtml = path.join(process.cwd(), 'public', 'install.html');
     res.sendFile(installHtml);
   }
 
-  /** GET /api/app/:id — Return metadata JSON */
+  @Get('apps')
+  serveAppsPage(@Res() res: Response): void {
+    const appsHtml = path.join(process.cwd(), 'public', 'apps.html');
+    res.sendFile(appsHtml);
+  }
+
   @Get('api/app/:id')
-  getAppMetadata(
+  async getAppMetadata(
     @Param('id') id: string,
     @Res() res: Response,
-  ): void {
-    const uploadDir = this.configService.get<string>(
-      'app.uploadDir',
-      './uploads',
-    );
+  ): Promise<void> {
     const baseUrl = this.configService.get<string>('app.baseUrl');
-    const metadataPath = path.join(uploadDir, id, 'metadata.json');
+    const metadataKey = `${id}/metadata.json`;
 
-    if (!fs.existsSync(metadataPath)) {
-      res
-        .status(HttpStatus.NOT_FOUND)
-        .json({ error: 'App not found or link has expired' });
+    const exists = await this.storageService.fileExists(metadataKey);
+    if (!exists) {
+      res.status(HttpStatus.NOT_FOUND).json({
+        error: 'App not found or link has expired',
+      });
       return;
     }
 
-    const metadata = JSON.parse(
-      fs.readFileSync(metadataPath, 'utf8'),
-    );
+    const metadataBuffer = await this.storageService.readFile(metadataKey);
+    const metadata = JSON.parse(metadataBuffer.toString('utf-8'));
 
     res.json({
       metadata,
@@ -50,51 +51,42 @@ export class AppInfoController {
     });
   }
 
-  /** GET /api/icon/:id — Serve app icon PNG or default icon */
   @Get('api/icon/:id')
-  getIcon(
+  async getIcon(
     @Param('id') id: string,
     @Res() res: Response,
-  ): void {
-    const uploadDir = this.configService.get<string>(
-      'app.uploadDir',
-      './uploads',
-    );
-    const iconPath = path.join(uploadDir, id, 'icon.png');
-    const defaultIcon = path.join(
-      process.cwd(),
-      'public',
-      'images',
-      'default-icon.png',
-    );
+  ): Promise<void> {
+    const iconKey = `${id}/icon.png`;
+    const defaultIcon = path.join(process.cwd(), 'public', 'images', 'default-icon.png');
 
     res.set('Content-Type', 'image/png');
-    if (fs.existsSync(iconPath)) {
-      res.sendFile(path.resolve(iconPath));
+
+    const exists = await this.storageService.fileExists(iconKey);
+    if (exists) {
+      const stream = await this.storageService.readFileStream(iconKey);
+      stream.pipe(res);
     } else {
       res.sendFile(path.resolve(defaultIcon));
     }
   }
 
-  /** GET /api/download/:id — Serve IPA file for OTA installation */
   @Get('api/download/:id')
-  downloadIpa(
+  async downloadIpa(
     @Param('id') id: string,
     @Res() res: Response,
-  ): void {
-    const uploadDir = this.configService.get<string>(
-      'app.uploadDir',
-      './uploads',
-    );
-    const ipaPath = path.join(uploadDir, id, 'app.ipa');
+  ): Promise<void> {
+    const ipaKey = `${id}/app.ipa`;
 
-    if (!fs.existsSync(ipaPath)) {
+    const exists = await this.storageService.fileExists(ipaKey);
+    if (!exists) {
       res.status(HttpStatus.NOT_FOUND).send('File not found');
       return;
     }
 
     res.set('Content-Type', 'application/octet-stream');
     res.set('Content-Disposition', 'attachment; filename="app.ipa"');
-    res.sendFile(path.resolve(ipaPath));
+
+    const stream = await this.storageService.readFileStream(ipaKey);
+    stream.pipe(res);
   }
 }

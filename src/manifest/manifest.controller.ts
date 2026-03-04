@@ -1,37 +1,34 @@
-import { Controller, Get, Param, Res, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Inject, Param, Res, HttpStatus } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Response } from 'express';
-import * as path from 'path';
-import * as fs from 'fs';
 import { ManifestGeneratorService } from '../services/manifest-generator.service';
+import { STORAGE_SERVICE, IStorageService } from '../common/interfaces/storage.interface';
 
 @Controller('api')
 export class ManifestController {
   constructor(
     private readonly configService: ConfigService,
     private readonly manifestGenerator: ManifestGeneratorService,
+    @Inject(STORAGE_SERVICE)
+    private readonly storageService: IStorageService,
   ) {}
 
   @Get('manifest/:id')
-  getManifest(
+  async getManifest(
     @Param('id') id: string,
     @Res() res: Response,
-  ): void {
-    const uploadDir = this.configService.get<string>(
-      'app.uploadDir',
-      './uploads',
-    );
+  ): Promise<void> {
     const baseUrl = this.configService.get<string>('app.baseUrl');
-    const metadataPath = path.join(uploadDir, id, 'metadata.json');
+    const metadataKey = `${id}/metadata.json`;
 
-    if (!fs.existsSync(metadataPath)) {
+    const exists = await this.storageService.fileExists(metadataKey);
+    if (!exists) {
       res.status(HttpStatus.NOT_FOUND).send('App not found');
       return;
     }
 
-    const metadata = JSON.parse(
-      fs.readFileSync(metadataPath, 'utf8'),
-    );
+    const metadataBuffer = await this.storageService.readFile(metadataKey);
+    const metadata = JSON.parse(metadataBuffer.toString('utf-8'));
 
     const manifestXml = this.manifestGenerator.generateManifest({
       ipaUrl: `${baseUrl}/api/download/${id}`,

@@ -1,0 +1,46 @@
+import { Readable } from 'stream';
+
+export const STORAGE_SERVICE = 'STORAGE_SERVICE';
+
+export interface IStorageService {
+  /**
+   * Save a file to storage.
+   * @param key - Storage key (e.g., "<uploadId>/app.ipa")
+   * @param data - File contents as Buffer or Readable stream
+   * @param contentType - Optional MIME type
+   */
+  saveFile(key: string, data: Buffer | Readable, contentType?: string): Promise<void>;
+
+  /**
+   * Read a file from storage into a Buffer.
+   */
+  readFile(key: string): Promise<Buffer>;
+
+  /**
+   * Read a file from storage as a Readable stream.
+   */
+  readFileStream(key: string): Promise<Readable>;
+
+  /**
+   * Check whether a file exists in storage.
+   */
+  fileExists(key: string): Promise<boolean>;
+
+  /**
+   * Delete all files under a given prefix (i.e., an upload directory).
+   * @param prefix - The directory/prefix to delete (e.g., "<uploadId>")
+   */
+  deleteDirectory(prefix: string): Promise<void>;
+
+  /**
+   * List all top-level upload directories/prefixes.
+   * Returns an array of upload IDs.
+   */
+  listDirectories(): Promise<string[]>;
+
+  /**
+   * Get the last-modified timestamp for a file.
+   * Returns undefined if the file does not exist.
+   */
+  getLastModified(key: string): Promise<Date | undefined>;
+}

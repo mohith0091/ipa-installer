@@ -9,11 +9,14 @@ async function bootstrap() {
 
   const configService = app.get(ConfigService);
   const port = configService.get<number>('app.port', 3000);
+  const storageType = configService.get<string>('app.storageType', 'local');
 
-  // Ensure uploads directory exists
-  const uploadDir = configService.get<string>('app.uploadDir', './uploads');
-  if (!fs.existsSync(uploadDir)) {
-    fs.mkdirSync(uploadDir, { recursive: true });
+  // Ensure uploads directory exists for local storage
+  if (storageType === 'local') {
+    const uploadDir = configService.get<string>('app.uploadDir', './uploads');
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
   }
 
   // Set server timeout for large uploads (10 minutes)
@@ -21,6 +24,6 @@ async function bootstrap() {
   server.setTimeout(600000);
 
   await app.listen(port);
-  console.log(`Server running at http://localhost:${port}`);
+  console.log(`Server running at http://localhost:${port} (storage: ${storageType})`);
 }
 bootstrap();
